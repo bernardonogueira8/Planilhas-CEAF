@@ -1,0 +1,5 @@
+TKinterModernThemes
+ttkbootstrap
+openpyxl
+pandas
+numpy

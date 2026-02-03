@@ -1,0 +1,6 @@
+name: tkinter
+dependencies:
+    - python=3.13
+    - pip
+    - pip:
+          - -r requirements.txt
