@@ -1,2 +1,4 @@
-/raw
 ./raw/*
+/build
+/dist
+/raw
