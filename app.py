@@ -31,10 +31,17 @@ def salvar_log(mensagem, caminho_base, erro=None):
 
 
 def apply_styles(ws):
-    """Aplica estilos, formata datas e adiciona linha de somatório no rodapé."""
+    """
+    Aplica estilos e validações pontuais:
+    - Célula em A ou E vazia: pinta A CÉLULA de amarelo.
+    - Antepenúltima coluna (final-1) preenchida: pinta A CÉLULA de amarelo.
+    - Formatação de data dd/mm/yyyy.
+    - Rodapé com somatórios em B, E e última coluna.
+    """
     AZUL_BEBE = "83caff"
     VERMELHO = "FF0000"
     CINZA_CLARO = "dddddd"
+    AMARELO = "FFFF00"
     PRETO = "000000"
 
     thin_border = Border(left=Side(style='thin'), right=Side(style='thin'),
@@ -44,16 +51,14 @@ def apply_styles(ws):
     font_bold = Font(bold=True, color=PRETO)
     font_header = Font(bold=True, color=PRETO, size=12)
 
-    # Identifica limites ANTES de adicionar o somatório
     orig_max_row = ws.max_row
     max_col = ws.max_column
+    antepenult_col_idx = max_col - 1
     footer_row = orig_max_row + 1
 
-    # 1. Medidas Específicas
+    # 1. Medidas e Mesclagem
     ws.row_dimensions[1].height = 85
     ws.column_dimensions['A'].width = 5
-
-    # 2. Mesclagem Linha 1
     if "A1:E1" not in ws.merged_cells:
         ws.merge_cells("A1:E1")
     if max_col >= 6:
@@ -61,32 +66,24 @@ def apply_styles(ws):
         if range_f not in ws.merged_cells:
             ws.merge_cells(range_f)
 
-    # 3. Adição do Rodapé (Somatório)
-    # Coluna B: Texto
-    cell_b_footer = ws.cell(row=footer_row, column=2)
-    cell_b_footer.value = "QUANTIDADE A SER LIBERADA POR MÊS"
-    cell_b_footer.font = font_bold
+    # 2. Somatórios no Rodapé
+    ws.cell(row=footer_row, column=2).value = "QUANTIDADE A SER LIBERADA POR MÊS"
+    ws.cell(row=footer_row, column=5).value = f"=SUM(E3:E{orig_max_row})"
+    ws.cell(row=footer_row,
+            column=max_col).value = f"=SUM({get_column_letter(max_col)}3:{get_column_letter(max_col)}{orig_max_row})"
 
-    # Coluna E: Soma (de E3 até o final dos dados originais)
-    col_e_letter = "E"
-    sum_formula_e = f"=SUM({col_e_letter}3:{col_e_letter}{orig_max_row})"
-    ws.cell(row=footer_row, column=5).value = sum_formula_e
-
-    # Ultima Coluna: Soma
-    last_col_letter = get_column_letter(max_col)
-    sum_formula_last = f"=SUM({last_col_letter}3:{last_col_letter}{orig_max_row})"
-    ws.cell(row=footer_row, column=max_col).value = sum_formula_last
-
-    # 4. Aplicação de Estilos, Formatação e Bordas no Rodapé
+    # 3. Estilização e Validação Pontual
     for r in range(1, footer_row + 1):
         for c in range(1, max_col + 1):
             cell = ws.cell(row=r, column=c)
             cell.border = thin_border
             cell.alignment = align_center
 
+            # Formatação de Data
             if isinstance(cell.value, datetime):
                 cell.number_format = 'DD/MM/YYYY'
 
+            # --- REGRAS DE CABEÇALHO E RODAPÉ ---
             if r == 1:
                 cell.font = font_header
                 cell.fill = PatternFill(
@@ -102,25 +99,34 @@ def apply_styles(ws):
                 else:
                     cell.fill = PatternFill(
                         start_color=VERMELHO, fill_type="solid")
-
-            # Estilo específico para a linha de somatório
-            if r == footer_row:
+            elif r == footer_row:
                 cell.font = font_bold
-                if c in [2, 5, max_col]:  # Destaca onde há texto ou soma
+                if c in [2, 5, max_col]:
                     cell.fill = PatternFill(
                         start_color=CINZA_CLARO, fill_type="solid")
 
-    # 5. Ajuste de largura
+            # --- REGRAS DE VALIDAÇÃO (AMARELO PONTUAL) ---
+            elif 2 < r < footer_row:
+                val = str(cell.value).strip() if cell.value is not None else ""
+
+                # Regra 1: Colunas A (1) ou E (5) vazias
+                if c in [1, 5] and val == "":
+                    cell.fill = PatternFill(
+                        start_color=AMARELO, fill_type="solid")
+
+                # Regra 2: Antepenúltima coluna (final-1) diferente de vazio
+                elif c == antepenult_col_idx and val != "":
+                    cell.fill = PatternFill(
+                        start_color=AMARELO, fill_type="solid")
+
+    # 4. Ajuste de largura
     for c in range(2, max_col + 1):
         max_len = 0
         for r in range(1, footer_row + 1):
-            if ws.cell(row=r, column=c).value:
-                # Ignora fórmulas no cálculo de largura para não dar erro
-                val_str = str(ws.cell(row=r, column=c).value)
-                if not val_str.startswith("="):
-                    max_len = max(max_len, len(val_str))
+            cell_val = ws.cell(row=r, column=c).value
+            if cell_val and not str(cell_val).startswith("="):
+                max_len = max(max_len, len(str(cell_val)))
         ws.column_dimensions[get_column_letter(c)].width = min(max_len + 5, 50)
-
 # --- LÓGICA DE PROCESSAMENTO ---
 
 
