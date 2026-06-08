@@ -1,4 +1,6 @@
-# Automação das planilhas de Avaliação do CEAF - Versão 1.0
+# Aplicativo Subtituido por:
+https://github.com/bernardonogueira8/AppSAFTEC
+## Automação das planilhas de Avaliação do CEAF - Versão 1.0
 Primeira versão do descompilador de planilhas para SAFTEC/DASF/COAFE.
 Funcionalidades:
 - Seleção da planilha de avaliação
